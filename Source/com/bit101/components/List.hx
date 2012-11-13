@@ -40,9 +40,9 @@ class List extends Component
   public var defaultColor(getDefaultColor, setDefaultColor):Int;
   public var selectedColor(getSelectedColor, setSelectedColor):Int;
   public var rolloverColor(getRolloverColor, setRolloverColor):Int;
-  public var listItemHeight(getListItemHeight, setListItemHeight):Float;
+  public var listItemHeight(getViewItemHeight, setViewItemHeight):Float;
   public var items(getItems, setItems):Array<Dynamic>;
-  public var listItemClass(getListItemClass, setListItemClass):Class<ListItem>;
+  public var listItemClass(getViewItemClass, setViewItemClass):Class<ViewItem>;
   public var alternateColor(getAlternateColor, setAlternateColor):Int;
   public var alternateRows(getAlternateRows, setAlternateRows):Bool;
   public var autoHideScrollBar(getAutoHideScrollBar, setAutoHideScrollBar):Bool;
@@ -54,7 +54,7 @@ class List extends Component
   var _itemHolder:Sprite;
   var _panel:Panel;
   var _listItemHeight:Float;
-  var _listItemClass:Class<ListItem>;
+  var _listItemClass:Class<ViewItem>;
   var _scrollbar:VScrollBar;
   var _selectedIndex:Int;
   var _defaultColor:Int;
@@ -66,7 +66,7 @@ class List extends Component
   var _numItemsToShow:Int;
   var _autoHeight:Bool;
   
-  var _listItems:Array<ListItem>;
+  var _listItems:Array<ViewItem>;
   
   /**
    * Constructor
@@ -98,7 +98,7 @@ class List extends Component
       _items = new Array();
     }
     
-    _listItems = new Array<ListItem>();
+    _listItems = new Array<ViewItem>();
     
     super(parent, xpos, ypos);
   }
@@ -112,7 +112,7 @@ class List extends Component
     setSize(100, 100);
     addEventListener(MouseEvent.MOUSE_WHEEL, onMouseWheel);
     addEventListener(Event.RESIZE, onResize);
-    makeListItems();
+    makeViewItems();
     fillItems();
   }
   
@@ -133,7 +133,7 @@ class List extends Component
   /**
    * Creates all the list items based on data.
    */
-  function makeListItems():Void
+  function makeViewItems():Void
   {
     _listItems = [];
     while (_itemHolder.numChildren > 0)
@@ -146,9 +146,10 @@ class List extends Component
     var numItems:Int = Math.ceil(_height / _listItemHeight);
     numItems = Std.int(Math.min(numItems, _items.length));
     numItems = Std.int(Math.max(numItems, 1));
+
     for (i in 0...numItems)
     {
-      var item : ListItem = new ListItem (_itemHolder, 0, i * _listItemHeight);
+      var item : ViewItem = Type.createInstance ( _listItemClass, [ _itemHolder, 0, i * _listItemHeight ]);
       item.setSize(width, _listItemHeight);
       item.defaultColor = _defaultColor;
 
@@ -171,10 +172,15 @@ class List extends Component
     {
       _height = Std.int(Math.min(numItemsToShow * _listItemHeight, numItems * _listItemHeight));
     }
+
     // TODO: Fix this
     for (i in 0...numItems)
     {
-      var item : ListItem = _listItems[i];
+
+      var item : ViewItem = _listItems[i];
+      if ( null == item )
+        return;
+
       if (offset + i < _items.length)
       {
         item.data = _items[offset + i];
@@ -287,7 +293,7 @@ class List extends Component
   {
     _items.push(item);
     invalidate();
-    makeListItems();
+    makeViewItems();
     fillItems();
   }
   
@@ -303,7 +309,7 @@ class List extends Component
     //_items.splice(index, 0, item);
     _items.insert(index, item);
     invalidate();
-    makeListItems();
+    makeViewItems();
     fillItems();
   }
   
@@ -334,7 +340,7 @@ class List extends Component
     if (index < 0 || index >= _items.length) return;
     _items.splice(index, 1);
     invalidate();
-    makeListItems();
+    makeViewItems();
     fillItems();
   }
   
@@ -345,7 +351,7 @@ class List extends Component
   {
     _items = [];
     invalidate();
-    makeListItems();
+    makeViewItems();
     fillItems();
   }
   
@@ -363,17 +369,17 @@ class List extends Component
   function onSelect(event:Event):Void
   {
     // TODO: Fix this
-    //if(!Std.is(event.target, ListItem)) return;
+    //if(!Std.is(event.target, ViewItem)) return;
     
     var offset:Int = Std.int(_scrollbar.value);
     
     for (i in 0..._itemHolder.numChildren)
     {
       if (_itemHolder.getChildAt(i) == event.target) _selectedIndex = i + offset;
-      //cast(_itemHolder.getChildAt(i), ListItem).selected = false;
-      cast(_listItems[i], ListItem).selected = false;
+      //cast(_itemHolder.getChildAt(i), ViewItem).selected = false;
+      cast(_listItems[i], ViewItem).selected = false;
     }
-    //cast(event.target, ListItem).selected = true;
+    //cast(event.target, ViewItem).selected = true;
     //selectedIndex = _selectedIndex;
 	
 	if (_selectedIndex >= _items.length)
@@ -383,7 +389,7 @@ class List extends Component
 	
 	if (_selectedIndex - offset >= 0)
 	{
-		cast(_listItems[_selectedIndex - offset], ListItem).selected =  true;
+		cast(_listItems[_selectedIndex - offset], ViewItem).selected =  true;
 	}
 	
     dispatchEvent(new Event(Event.SELECT));
@@ -408,7 +414,7 @@ class List extends Component
 
   function onResize(event:Event):Void
   {
-    makeListItems();
+    makeViewItems();
     fillItems();
   }
   ///////////////////////////////////
@@ -528,15 +534,15 @@ class List extends Component
   /**
    * Sets the height of each list item.
    */
-  public function setListItemHeight(value:Float):Float
+  public function setViewItemHeight(value:Float):Float
   {
     _listItemHeight = value;
-    makeListItems();
+    makeViewItems();
     invalidate();
     return value;
   }
   
-  public function getListItemHeight():Float
+  public function getViewItemHeight():Float
   {
     return _listItemHeight;
   }
@@ -557,17 +563,17 @@ class List extends Component
   }
 
   /**
-   * Sets / gets the class used to render list items. Must extend ListItem.
+   * Sets / gets the class used to render list items. Must extend ViewItem.
    */
-  public function setListItemClass(value:Class<ListItem>):Class<ListItem>
+  public function setViewItemClass(value:Class<ViewItem>):Class<ViewItem>
   {
     _listItemClass = value;
-    makeListItems();
+    makeViewItems();
     invalidate();
     return value;
   }
   
-  public function getListItemClass():Class<ListItem>
+  public function getViewItemClass():Class<ViewItem>
   {
     return _listItemClass;
   }
