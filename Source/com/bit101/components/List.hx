@@ -117,8 +117,74 @@ class List extends Component
     setSize(100, 100);
     addEventListener(MouseEvent.MOUSE_WHEEL, onMouseWheel);
     addEventListener(Event.RESIZE, onResize);
+    addEventListener ( MouseEvent.MOUSE_DOWN, handlerMouseDown );
+    addEventListener ( MouseEvent.MOUSE_UP, handlerMouseUp );
     makeViewItems();
     fillItems();
+  }
+
+  var lastMouseX : Float;
+  var lastMouseY : Float;
+  var isDragging : Bool;
+
+  function handlerMouseDown ( event )
+  {
+    addEventListener ( MouseEvent.MOUSE_MOVE, handlerMouseMove );
+    lastMouseX = mouseX;
+    lastMouseY = mouseY;
+    isDragging = true;
+  }
+
+  function handlerMouseMove ( event )
+  {
+    var numItems:Int = Math.ceil(_height / _listItemHeight);
+    numItems = Std.int(Math.min(numItems, _items.length));
+    numItems = Std.int(Math.max(numItems, 1));
+    numItems = Std.int ( Math.min ( _items.length, numItems + getCacheSize ( ) ) );
+
+    var cache : Array<ListItem> = new Array<ListItem> ( );
+    var diff : Float;
+
+    if ( isHorizontal ( ) ) {
+      var first = _listItems[0];
+      diff = mouseX - lastMouseX;
+      // if ( first.x > 0 && lastMouseX - mouseX < 0 )
+      //   return;
+      for ( i in 0 ... numItems ) {
+        var item = _listItems[i];
+        if ( 0 == i ) {
+        trace ( Std.format ( "Item x ${item.x} diff $diff" ) );
+        trace ( Std.format ( "mouse x $mouseX last mouse x $lastMouseX" ) );
+        }
+        if ( item.x + diff > 0 && 0 == i ) {
+          break;
+        }
+
+        item.x -= lastMouseX - mouseX;
+      }
+    } else if ( isVertical ( ) ) {
+
+    }
+    
+
+    lastMouseX = mouseX;
+    lastMouseY = mouseY;
+  }
+
+  function handlerMouseUp ( event )
+  {
+    removeEventListener ( MouseEvent.MOUSE_MOVE, handlerMouseMove );
+    isDragging = false;
+  }
+
+  function isVertical ( ) : Bool
+  {
+    return _orientation == Slider.VERTICAL;
+  }
+
+  function isHorizontal ( ) : Bool
+  {
+    return ! isVertical ( );
   }
   
   /**
@@ -156,18 +222,30 @@ class List extends Component
     numItems = Std.int(Math.min(numItems, _items.length));
     numItems = Std.int(Math.max(numItems, 1));
 
+    numItems = Std.int ( Math.min ( _items.length, numItems + getCacheSize ( ) ) );
+
     for (i in 0...numItems)
     {
       var posX : Float, posY : Float;
+      var pre = _listItems[i-1];
       if ( orientation == Slider.VERTICAL ) {
         posX = 0;
+        if ( 0 == i )
+          posY = 0
+        else
+          posY = pre.y + pre.height;
+
         posY = i * _listItemHeight;
       } else {
-        posX = i * _listItemHeight;
+        if ( 0 == i )
+          posX = 0;
+        else
+          posX = pre.x + pre.width;
         posY = 0;
       }
       var item : ViewItem = Type.createInstance ( _listItemClass, [ _itemHolder, posX, posY ]);
-      item.setSize(width, _listItemHeight);
+
+      // item.setSize(width, _listItemHeight);
       item.defaultColor = _defaultColor;
 
       item.selectedColor = _selectedColor;
@@ -178,12 +256,18 @@ class List extends Component
     }
   }
 
+  function getCacheSize ( ) : Int
+  {
+    return 10;
+  }
+
   function fillItems():Void
   {
     var offset:Int = Std.int(_scrollbar.value);
     var numItems:Int = Math.ceil(_height / _listItemHeight);
     numItems = Std.int(Math.min(numItems, _items.length));
-    
+    numItems = Std.int ( Math.min ( _items.length, numItems + getCacheSize ( ) ) );
+
     // TODO: Fix this
     if (_autoHeight)
     {
@@ -271,6 +355,9 @@ class List extends Component
    */
   public override function draw():Void
   {
+    var rect = new nme.geom.Rectangle ( x, y, _width, _height );
+    scrollRect = rect;
+
     super.draw();
     
     _selectedIndex = Std.int(Math.min(_selectedIndex, _items.length - 1));
