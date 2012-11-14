@@ -49,13 +49,14 @@ class List extends Component
   
   public var numItemsToShow(getNumItemsToShow, setNumItemsToShow):Int;
   public var autoHeight(getAutoHeight, setAutoHeight):Bool;
+  public var orientation ( getOrientation, setOrientation ) : String;
   
   var _items:Array<Dynamic>;
   var _itemHolder:Sprite;
   var _panel:Panel;
   var _listItemHeight:Float;
   var _listItemClass:Class<ViewItem>;
-  var _scrollbar:VScrollBar;
+  var _scrollbar:ScrollBar;
   var _selectedIndex:Int;
   var _defaultColor:Int;
   var _alternateColor:Int;
@@ -67,6 +68,8 @@ class List extends Component
   var _autoHeight:Bool;
   
   var _listItems:Array<ViewItem>;
+
+  var _orientation : String;
   
   /**
    * Constructor
@@ -75,7 +78,7 @@ class List extends Component
    * @param ypos The y position to place this component.
    * @param items An array of items to display in the list. Either strings or objects with label property.
    */
-  public function new(?parent:Dynamic = null, ?xpos:Float = 0, ?ypos:Float = 0, ?items:Array<Dynamic> = null)
+  public function new(?parent:Dynamic = null, ?xpos:Float = 0, ?ypos:Float = 0, ?items:Array<Dynamic> = null, ?orientation : String = Slider.HORIZONTAL )
   {
     _listItemHeight = 20;
     _listItemClass = ListItem;
@@ -88,6 +91,8 @@ class List extends Component
     
     _numItemsToShow = 5;
     _autoHeight = false;
+
+    _orientation = orientation;
     
     if(items != null)
     {
@@ -126,7 +131,11 @@ class List extends Component
     _panel.color = _defaultColor;
     _itemHolder = new Sprite();
     _panel.content.addChild(_itemHolder);
-    _scrollbar = new VScrollBar(this, 0, 0, onScroll);
+    if ( _orientation == Slider.VERTICAL ) {
+      _scrollbar = new VScrollBar(this, 0, 0, onScroll);
+    } else {
+      _scrollbar = new HScrollBar(this, 0, 0, onScroll);
+    }
     _scrollbar.setSliderParams(0, 0, 0);
   }
   
@@ -149,7 +158,15 @@ class List extends Component
 
     for (i in 0...numItems)
     {
-      var item : ViewItem = Type.createInstance ( _listItemClass, [ _itemHolder, 0, i * _listItemHeight ]);
+      var posX : Float, posY : Float;
+      if ( orientation == Slider.VERTICAL ) {
+        posX = 0;
+        posY = i * _listItemHeight;
+      } else {
+        posX = i * _listItemHeight;
+        posY = 0;
+      }
+      var item : ViewItem = Type.createInstance ( _listItemClass, [ _itemHolder, posX, posY ]);
       item.setSize(width, _listItemHeight);
       item.defaultColor = _defaultColor;
 
@@ -264,17 +281,27 @@ class List extends Component
     _panel.draw();
     
     // scrollbar
-    _scrollbar.x = _width - 10;
+    var viewLength;
+    if ( _orientation == Slider.VERTICAL ) {
+      _scrollbar.x = _width - 10;
+      viewLength = _height;
+      _scrollbar.height = viewLength;
+    } else {
+      _scrollbar.y = _height - 10;
+      viewLength = _width;
+      _scrollbar.width = viewLength;
+    }
+    
     var contentHeight:Float = _items.length * _listItemHeight;
-    _scrollbar.setThumbPercent(_height / contentHeight); 
+    _scrollbar.setThumbPercent(viewLength / contentHeight); 
     #if flash
-    var pageSize:Float = Math.floor(_height / _listItemHeight);
+    var pageSize:Float = Math.floor(viewLength / _listItemHeight);
     #else
-    var pageSize:Float = Math.ceil(_height / _listItemHeight);
+    var pageSize:Float = Math.ceil(viewLength / _listItemHeight);
     #end
     _scrollbar.maximum = Math.max(0, _items.length - pageSize);
     _scrollbar.pageSize = Std.int(pageSize);
-    _scrollbar.height = _height;
+    
     _scrollbar.draw();
     scrollToSelection();
     
@@ -659,5 +686,15 @@ class List extends Component
     return super.setHeight(h);
   }
 
+  public function getOrientation ( ) : String
+  {
+    return _orientation;
+  }
+
+  public function setOrientation ( value : String ) : String
+  {
+    _orientation = value;
+    return value;
+  }
 }
 
