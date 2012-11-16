@@ -44,6 +44,7 @@ class ScrollBar extends Component
 	public var maximum(getMaximum, setMaximum):Float;
 	public var lineSize(getLineSize, setLineSize):Int;
 	public var pageSize(getPageSize, setPageSize):Int;
+	public var forceVisible ( getForceVisible, setForceVisible ) : Bool;
 	
 	static inline var DELAY_TIME:Int = 500;
 	static inline var REPEAT_TIME:Int = 100; 
@@ -60,6 +61,7 @@ class ScrollBar extends Component
 	var _repeatTimer:Timer;
 	var _direction:String;
 	var _shouldRepeat:Bool;
+	var _forceVisible : Bool;
 	
 	/**
 	 * Constructor
@@ -76,6 +78,7 @@ class ScrollBar extends Component
 		_shouldRepeat = false;
 		
 		_orientation = orientation;
+		_forceVisible = true;
 		super(parent, xpos, ypos);
 		if(defaultHandler != null)
 		{
@@ -201,14 +204,16 @@ class ScrollBar extends Component
 			_downButton.y = 0;
 		}
 		_scrollSlider.draw();
-		if (_autoHide)
+		if (_autoHide && _forceVisible )
 		{
 			visible = _scrollSlider.thumbPercent < 1.0;
 		}
-		else
+		else if ( ! _autoHide && _forceVisible )
 		{
+
 			visible = true;
 		}
+
 	}
 
 	
@@ -379,6 +384,18 @@ class ScrollBar extends Component
 			goDown();
 		}
 	}
+
+    function getForceVisible ( ) : Bool
+    {
+    	return this._forceVisible;
+    }
+
+    function setForceVisible ( value : Bool ) : Bool
+    {
+    	visible = value;
+    	_forceVisible = value;
+    	return value;
+    }
 
 }
 

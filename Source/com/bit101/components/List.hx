@@ -78,7 +78,7 @@ class List extends Component
    * @param ypos The y position to place this component.
    * @param items An array of items to display in the list. Either strings or objects with label property.
    */
-  public function new(?parent:Dynamic = null, ?xpos:Float = 0, ?ypos:Float = 0, ?items:Array<Dynamic> = null, ?orientation : String = Slider.HORIZONTAL )
+  public function new(?parent:Dynamic = null, ?xpos:Float = 0, ?ypos:Float = 0, ?items:Array<Dynamic> = null, ?orientation : String = Slider.VERTICAL )
   {
     _listItemHeight = 20;
     _listItemClass = ListItem;
@@ -136,12 +136,12 @@ class List extends Component
     isDragging = true;
   }
 
-  function getListItemPosition ( item : ListItem ) : Float
+  function getListItemPosition ( item : Component ) : Float
   {
     return isHorizontal ( ) ? item.x : item.y;
   }
 
-  function setListItemPosition ( item : ListItem, position : Float ) : Float
+  function setListItemPosition ( item : Component, position : Float ) : Float
   {
     if ( isHorizontal ( ) )
       item.x = position;
@@ -151,12 +151,12 @@ class List extends Component
     return position;
   }
 
-  function getListItemLength (  tem : ListItem ) : Float
+  function getListItemLength (  item : Component ) : Float
   {
     return isHorizontal ( ) ? item.width : item.height;
   }
 
-  function setListItemLength ( item : ListItem, length : Float ) : Float
+  function setListItemLength ( item : Component, length : Float ) : Float
   {
     if ( isHorizontal ( ) )
       item.width = length;
@@ -169,99 +169,74 @@ class List extends Component
   function handlerEnterFrame ( event )
   {
     var itemSize = _items.length;
-    var numItems:Int = Math.ceil(_height / _listItemHeight);
-    numItems = Std.int(Math.min(numItems, itemSize));
-    numItems = Std.int(Math.max(numItems, 1));
-    numItems = Std.int ( Math.min ( itemSize, numItems + getCacheSize ( ) ) );
 
-    var cache : Array<ListItem> = new Array<ListItem> ( );
     var diff : Float;
-    var outOfBound = false;
 
-    if ( isHorizontal ( ) ) {
-      var first = _listItems[0];
-      var last  = _listItems[_listItems.length-1];
+    var first = _listItems[0];
+    var last  = _listItems[_listItems.length-1];
 
-      diff = mouseX - lastMouseX;
-      // > 0 Right
+    diff = isHorizontal ( ) ? mouseX - lastMouseX : mouseY - lastMouseY;
+    // > 0 Right
 
-      // if ( null != last ) {
-      //   if ( last.x + diff < width - last.width ) {
-      //     if ( ( last.x - ( width - last.width ) ) < Math.abs ( diff ) )
-      //       diff = width - last.width - last.x;
-      //     else
-      //       outOfBound = true;
-      //   }
-      // }
+    var leftCacheNumbers = 0;
+    var rightCacheNumbers = 0;
 
+    if ( getListItemPosition ( first ) + diff > 0 && leftIndex == 0 ) {
+      diff = Math.abs ( first.x );
+    }
 
-      var leftCacheNumbers = 0;
-      var rightCacheNumbers = 0;
+    if ( getListItemPosition ( last ) + getListItemLength ( last ) + diff < getListItemLength ( this ) ) {
+      diff = 0;
+    }
 
-      if ( ! outOfBound ) {
-        for ( i in 0 ... _listItems.length ) {
-          var item = _listItems[i];
-          // if ( item.x + diff > 0 && 0 == i ) {
-          //   break;
-          // }
-          // setListItemPosition ( item, getListItemPosition ( item ) + diff );
-          item.x += diff;
-
-          if ( item.x + item.width < 0 ) {
-            leftCacheNumbers += 1;
-          }
-
-          if ( item.x + item.width > width ) {
-            rightCacheNumbers += 1;
-          }
-        }
+    for ( i in 0 ... _listItems.length ) {
+      var item = _listItems[i];
+      setListItemPosition ( item, getListItemPosition ( item ) + diff );
+      // 左边活动区以外的对象
+      if ( getListItemPosition ( item ) + getListItemLength ( item  ) < 0 ) {
+        leftCacheNumbers += 1;
       }
-      var leftCacheRealNumbers = Math.floor ( getCacheSize ( ) / 2 );
-      var rightCacheRealNumbers = getCacheSize ( ) - leftCacheRealNumbers;
-
-      var spilth : Int = leftCacheNumbers - leftCacheRealNumbers;
-      if ( spilth > 0 ) {
-        for ( i in 0 ... spilth ) {
-          var newItemIndex = activeCounter + getCacheSize ( ) + leftIndex;
-          if ( newItemIndex >= itemSize ) {
-            continue;
-          }
-          leftIndex += 1;
-          var newItem = _items[newItemIndex];
-          var popListItem = _listItems.splice ( 0, 1 )[0];
-          var last = _listItems[_listItems.length-1];
-          popListItem.x = last.x + last.width;
-          popListItem.data = newItem;
-          _listItems.push ( popListItem );
-        }
-        // trace ( Std.format ( "左边弹出 $spilth 个Item" ) );
+      if ( getListItemPosition ( item ) > width ) {
+        rightCacheNumbers += 1;
       }
-
-      var rightSpilth : Int = rightCacheNumbers - rightCacheRealNumbers;
-      var leftNeed : Int;
-
-      if ( rightSpilth > 0 ) {
-        for ( i in 0 ... rightSpilth ) {
-          var newItemIndex = leftIndex - 1;
-          if ( newItemIndex < 0 )
-            continue;
-          var newItem = _items[newItemIndex];
-          var popListItem = _listItems.splice ( _listItems.length - 1, 1 )[0];
-          var first = _listItems[0];
-
-          popListItem.data = newItem;
-          popListItem.x = first.x - popListItem.width;
-          _listItems.insert ( 0, popListItem );
-          leftIndex -= 1;
-        }
-      }
-
-
-    } else if ( isVertical ( ) ) {
-
     }
     
-    // trace ( Std.format ( "now $mouseX, last $lastMouseX" ) );
+    var leftCacheRealNumbers = Math.floor ( getCacheSize ( ) / 2 );
+    var rightCacheRealNumbers = getCacheSize ( ) - leftCacheRealNumbers;
+    var spilth : Int = leftCacheNumbers - leftCacheRealNumbers;
+    if ( spilth > 0 ) {
+      for ( i in 0 ... spilth ) {
+        var newItemIndex = activeCounter + getCacheSize ( ) + leftIndex;
+        if ( newItemIndex >= itemSize ) {
+          continue;
+        }
+        leftIndex += 1;
+        var newItem = _items[newItemIndex];
+        var popListItem = _listItems.splice ( 0, 1 )[0];
+        var last = _listItems[_listItems.length-1];
+        setListItemPosition ( popListItem, getListItemPosition ( last ) + getListItemLength ( last ) );
+        popListItem.data = newItem;
+        _listItems.push ( popListItem );
+      }
+    }
+
+    var rightSpilth : Int = rightCacheNumbers - rightCacheRealNumbers;
+    if ( rightSpilth > 0 ) {
+      for ( i in 0 ... rightSpilth ) {
+        var newItemIndex = leftIndex - 1;
+        if ( newItemIndex < 0 )
+          continue;
+        var newItem = _items[newItemIndex];
+        var popListItem = _listItems.splice ( _listItems.length - 1, 1 )[0];
+        var first = _listItems[0];
+
+        popListItem.data = newItem;
+        setListItemPosition ( popListItem, getListItemPosition ( first ) - getListItemLength ( first ) );
+        _listItems.insert ( 0, popListItem );
+        leftIndex -= 1;
+      }
+    }
+
     lastMouseX = mouseX;
     lastMouseY = mouseY;
   }
@@ -344,7 +319,7 @@ class List extends Component
         else
           posY = pre.y + pre.height;
 
-        posY = i * _listItemHeight;
+        // posY = i * _listItemHeight;
       } else {
         if ( 0 == i )
           posX = 0;
@@ -387,7 +362,6 @@ class List extends Component
       _listItems.insert ( itemOfListIndex, item );
       i += 1;
     }
-    trace ( Std.format ( "Active $activeCounter cache size ${getCacheSize()} $i" ) );
   }
 
   function getCacheSize ( ) : Int
@@ -918,6 +892,16 @@ class List extends Component
   {
     _orientation = value;
     return value;
+  }
+
+  public function hideScrollBar ( )
+  {
+    _scrollbar.forceVisible = false;
+  }
+
+  public function showScrollBar ( )
+  {
+    _scrollbar.forceVisible = true;
   }
 }
 
