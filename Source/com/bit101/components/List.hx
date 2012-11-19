@@ -178,6 +178,9 @@ class List extends Component
     diff = isHorizontal ( ) ? mouseX - lastMouseX : mouseY - lastMouseY;
     // > 0 Right
 
+    if ( mouseX <= x || mouseX >= width || mouseY <= y || mouseY >= height )
+      handlerMouseUp ( null );
+
     var leftCacheNumbers = 0;
     var rightCacheNumbers = 0;
 
@@ -596,10 +599,14 @@ class List extends Component
     //if(!Std.is(event.target, ViewItem)) return;
     
     var offset:Int = Std.int(_scrollbar.value);
+    var target : Dynamic = event.target;
+    var item : Dynamic;
     
     for (i in 0..._itemHolder.numChildren)
     {
-      if (_itemHolder.getChildAt(i) == event.target) _selectedIndex = i + offset;
+      item = _itemHolder.getChildAt(i);
+      // Bug _itemHolder.getChildAt(i) == event.target 编译错误。
+      if ( item == target ) _selectedIndex = i + offset;
       //cast(_itemHolder.getChildAt(i), ViewItem).selected = false;
       cast(_listItems[i], ViewItem).selected = false;
     }
