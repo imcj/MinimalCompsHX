@@ -168,6 +168,8 @@ class List extends Component
 
   function handlerEnterFrame ( event )
   {
+    var start : Float = Date.now ( ).getTime ( );
+
     var itemSize = _items.length;
 
     var diff : Float;
@@ -242,6 +244,9 @@ class List extends Component
 
     lastMouseX = mouseX;
     lastMouseY = mouseY;
+
+    var end : Float = Date.now ( ).getTime ( );
+    trace ( Std.string ( end ) + " " + Std.string ( start ) );
   }
 
   function handlerMouseUp ( event )

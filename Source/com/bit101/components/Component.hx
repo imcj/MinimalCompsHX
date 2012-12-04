@@ -81,6 +81,7 @@ class Component implements IEventDispatcher
 	public var tag(getTag, setTag):Int;
 	public var enabled(getEnabled, setEnabled):Bool;
     public var scrollRect ( getScrollRect, setScrollRect ) : nme.geom.Rectangle;
+    public var scale : Float;
 	
 	// Composition instead of inheritence because of haxe getter/setter handicap
 	var _comp:Sprite;
@@ -107,6 +108,7 @@ class Component implements IEventDispatcher
 		_enabled = true;
 		move(xpos, ypos);
 		this.parent = parent;
+		scale = 1;
 		if(parent != null)
 		{
 			parent.addChild(_comp);
