@@ -40,22 +40,23 @@ class List extends Component
   public var defaultColor(getDefaultColor, setDefaultColor):Int;
   public var selectedColor(getSelectedColor, setSelectedColor):Int;
   public var rolloverColor(getRolloverColor, setRolloverColor):Int;
-  public var listItemHeight(getListItemHeight, setListItemHeight):Float;
+  public var listItemHeight(getViewItemHeight, setViewItemHeight):Float;
   public var items(getItems, setItems):Array<Dynamic>;
-  public var listItemClass(getListItemClass, setListItemClass):Class<ListItem>;
+  public var listItemClass(getViewItemClass, setViewItemClass):Class<ViewItem>;
   public var alternateColor(getAlternateColor, setAlternateColor):Int;
   public var alternateRows(getAlternateRows, setAlternateRows):Bool;
   public var autoHideScrollBar(getAutoHideScrollBar, setAutoHideScrollBar):Bool;
   
   public var numItemsToShow(getNumItemsToShow, setNumItemsToShow):Int;
   public var autoHeight(getAutoHeight, setAutoHeight):Bool;
+  public var orientation ( getOrientation, setOrientation ) : String;
   
   var _items:Array<Dynamic>;
   var _itemHolder:Sprite;
   var _panel:Panel;
   var _listItemHeight:Float;
-  var _listItemClass:Class<ListItem>;
-  var _scrollbar:VScrollBar;
+  var _listItemClass:Class<ViewItem>;
+  var _scrollbar:ScrollBar;
   var _selectedIndex:Int;
   var _defaultColor:Int;
   var _alternateColor:Int;
@@ -66,7 +67,9 @@ class List extends Component
   var _numItemsToShow:Int;
   var _autoHeight:Bool;
   
-  var _listItems:Array<ListItem>;
+  var _listItems:Array<ViewItem>;
+
+  var _orientation : String;
   
   /**
    * Constructor
@@ -75,7 +78,7 @@ class List extends Component
    * @param ypos The y position to place this component.
    * @param items An array of items to display in the list. Either strings or objects with label property.
    */
-  public function new(?parent:Dynamic = null, ?xpos:Float = 0, ?ypos:Float = 0, ?items:Array<Dynamic> = null)
+  public function new(?parent:Dynamic = null, ?xpos:Float = 0, ?ypos:Float = 0, ?items:Array<Dynamic> = null, ?orientation : String = Slider.VERTICAL )
   {
     _listItemHeight = 20;
     _listItemClass = ListItem;
@@ -88,6 +91,8 @@ class List extends Component
     
     _numItemsToShow = 5;
     _autoHeight = false;
+
+    _orientation = orientation;
     
     if(items != null)
     {
@@ -98,7 +103,7 @@ class List extends Component
       _items = new Array();
     }
     
-    _listItems = new Array<ListItem>();
+    _listItems = new Array<ViewItem>();
     
     super(parent, xpos, ypos);
   }
@@ -112,8 +117,250 @@ class List extends Component
     setSize(100, 100);
     addEventListener(MouseEvent.MOUSE_WHEEL, onMouseWheel);
     addEventListener(Event.RESIZE, onResize);
-    makeListItems();
+    addEventListener ( MouseEvent.MOUSE_DOWN, handlerMouseDown );
+    addEventListener ( MouseEvent.MOUSE_UP, handlerMouseUp );
+    makeViewItems();
     fillItems();
+  }
+
+  var lastMouseX : Float;
+  var lastMouseY : Float;
+  var isDragging : Bool;
+  var leftIndex : Int;
+
+  function handlerMouseDown ( event )
+  {
+    addEventListener ( Event.ENTER_FRAME, handlerEnterFrame );
+    lastMouseX = mouseX;
+    lastMouseY = mouseY;
+    isDragging = true;
+  }
+
+  function getListItemPosition ( item : Component ) : Float
+  {
+    return isHorizontal ( ) ? item.x : item.y;
+  }
+
+  function setListItemPosition ( item : Component, position : Float ) : Float
+  {
+    if ( isHorizontal ( ) )
+      item.x = position;
+    else if ( isVertical ( ) )
+      item.y = position;
+
+    return position;
+  }
+
+  function getListItemLength (  item : Component ) : Float
+  {
+    return isHorizontal ( ) ? item.width : item.height;
+  }
+
+  function setListItemLength ( item : Component, length : Float ) : Float
+  {
+    if ( isHorizontal ( ) )
+      item.width = length;
+    else if ( isVertical ( ) )
+      item.height = length;
+
+    return length;
+  }
+
+  public function scrollToLeft ( )
+  {
+    _scrollTo ( "L" );
+  }
+
+  public function scrollToRight ( )
+  {
+    _scrollTo ( "R" );
+  }
+
+  var _scrollToListItem : ViewItem;
+  var _scrollMoveToTarget : Float = 0;
+  var _scrollModel : Bool = false;
+  var _duration : Float = 1000;
+  var _peerMillisecondDistance : Float;
+  var _distance : Float = 0;
+
+  function _scrollTo ( direction: String )
+  {
+    var next : ViewItem = null;
+    var item : ViewItem;
+    var size : Int = _listItems.length;
+    var first : ViewItem = _listItems[0];
+
+
+    for ( i in 0 ... size ) {
+      item = _listItems[i];
+
+      if ( direction == "L" ) {
+        if ( i < size ) {
+          next = _listItems[i+1];
+        }
+        if ( item.x < 0 ) {
+          if ( next != null ) {
+            if ( next.x < 0 ) {
+              continue;
+            } else {
+              _scrollToListItem = item;
+            }
+          }
+        }
+      }
+
+      if ( direction == "R" ) {
+        if ( ( item.x + item.width ) > width ) {
+          _scrollToListItem = item;
+          break;
+        }
+      }
+    }
+
+    if ( null == _scrollToListItem ) {
+      return;
+    }
+
+    _distance = if ( _scrollToListItem.x < 0 ) Math.abs ( _scrollToListItem.x ) else width - _scrollToListItem.width;
+    var frame_rate : Int = 24;
+    
+    _peerMillisecondDistance = ( _distance / _duration ) * ( 1000 / frame_rate );
+    _scrollModel = true;
+    addEventListener ( Event.ENTER_FRAME, handlerEnterFrame );
+  }
+
+  function handlerEnterFrame ( event )
+  {
+    var start : Float = Date.now ( ).getTime ( );
+
+    var itemSize = _items.length;
+
+    var diff : Float;
+
+    var first = _listItems[0];
+    var last  = _listItems[_listItems.length-1];
+
+    diff = 0;
+    if ( ! _scrollModel )
+      diff = isHorizontal ( ) ? mouseX - lastMouseX : mouseY - lastMouseY;
+    // > 0 Right
+    if ( ( mouseX <= x || mouseX >= width || mouseY <= y || mouseY >= height ) && false == _scrollModel ) {
+      handlerMouseUp ( null );
+    }
+
+    var leftCacheNumbers = 0;
+    var rightCacheNumbers = 0;
+
+    if ( getListItemPosition ( first ) + diff > 0 && leftIndex == 0 && ! _scrollModel ) {
+      diff = Math.abs ( first.x );
+    }
+
+    if ( getListItemPosition ( last ) + getListItemLength ( last ) + diff < getListItemLength ( this ) ) {
+      diff = 0;
+    }
+
+    if ( _scrollModel ) {
+      var over : Bool = false;
+      // trace ( diff );
+      if ( _scrollToListItem.x <= 0 ) {
+        diff = _peerMillisecondDistance;
+        if ( _scrollToListItem.x >= 0 ) {
+          over = true;
+        }
+      }
+
+      var outsideOfBoundary = _scrollToListItem.x + _scrollToListItem.width >= width - _peerMillisecondDistance;
+      if ( outsideOfBoundary ) {
+        diff = -_peerMillisecondDistance;
+        if ( _scrollToListItem.x <= width - _scrollToListItem.width ) {
+          over = true;
+        }
+      }
+
+      _distance -= _peerMillisecondDistance;
+      // trace ( _distance );
+
+      if ( over ) {
+        removeEventListener ( Event.ENTER_FRAME, handlerEnterFrame );
+        _scrollModel = false;
+        _peerMillisecondDistance = 0;
+
+      }
+    }
+    // if ( diff < first.x ) {
+    //   diff = first.x;
+    // } else if ( diff > last.x + last.width ) {
+    //   diff = last.x + last.width;
+    // }
+
+    for ( i in 0 ... _listItems.length ) {
+      var item = _listItems[i];
+      setListItemPosition ( item, getListItemPosition ( item ) + diff );
+      // 左边活动区以外的对象
+      if ( getListItemPosition ( item ) + getListItemLength ( item  ) < 0 ) {
+        leftCacheNumbers += 1;
+      }
+      if ( getListItemPosition ( item ) > width ) {
+        rightCacheNumbers += 1;
+      }
+    }
+    
+    var leftCacheRealNumbers = Math.floor ( getCacheSize ( ) / 2 );
+    var rightCacheRealNumbers = getCacheSize ( ) - leftCacheRealNumbers;
+    var spilth : Int = leftCacheNumbers - leftCacheRealNumbers;
+    if ( spilth > 0 ) {
+      for ( i in 0 ... spilth ) {
+        var newItemIndex = activeCounter + getCacheSize ( ) + leftIndex;
+        if ( newItemIndex >= itemSize ) {
+          continue;
+        }
+        leftIndex += 1;
+        var newItem = _items[newItemIndex];
+        var popListItem = _listItems.splice ( 0, 1 )[0];
+        var last = _listItems[_listItems.length-1];
+        setListItemPosition ( popListItem, getListItemPosition ( last ) + getListItemLength ( last ) );
+        popListItem.data = newItem;
+        _listItems.push ( popListItem );
+      }
+    }
+
+    var rightSpilth : Int = rightCacheNumbers - rightCacheRealNumbers;
+    if ( rightSpilth > 0 ) {
+      for ( i in 0 ... rightSpilth ) {
+        var newItemIndex = leftIndex - 1;
+        if ( newItemIndex < 0 )
+          continue;
+        var newItem = _items[newItemIndex];
+        var popListItem = _listItems.splice ( _listItems.length - 1, 1 )[0];
+        var first = _listItems[0];
+
+        popListItem.data = newItem;
+        setListItemPosition ( popListItem, getListItemPosition ( first ) - getListItemLength ( first ) );
+        _listItems.insert ( 0, popListItem );
+        leftIndex -= 1;
+      }
+    }
+
+    lastMouseX = mouseX;
+    lastMouseY = mouseY;
+
+    var end : Float = Date.now ( ).getTime ( );
+  }
+
+  function handlerMouseUp ( event )
+  {
+    removeEventListener ( Event.ENTER_FRAME, handlerEnterFrame );
+    isDragging = false;
+  }
+
+  function isVertical ( ) : Bool
+  {
+    return _orientation == Slider.VERTICAL;
+  }
+
+  function isHorizontal ( ) : Bool
+  {
+    return ! isVertical ( );
   }
   
   /**
@@ -126,14 +373,23 @@ class List extends Component
     _panel.color = _defaultColor;
     _itemHolder = new Sprite();
     _panel.content.addChild(_itemHolder);
-    _scrollbar = new VScrollBar(this, 0, 0, onScroll);
+    if ( _orientation == Slider.VERTICAL ) {
+      _scrollbar = new VScrollBar(this, 0, 0, onScroll);
+    } else {
+      _scrollbar = new HScrollBar(this, 0, 0, onScroll);
+    }
     _scrollbar.setSliderParams(0, 0, 0);
   }
+
+  var leftCache : Array<ListItem>;
+  var rightCache : Array<ListItem>;
+
+  var activeCounter : Int;
   
   /**
    * Creates all the list items based on data.
    */
-  function makeListItems():Void
+  function makeViewItems():Void
   {
     _listItems = [];
     while (_itemHolder.numChildren > 0)
@@ -143,38 +399,105 @@ class List extends Component
       _itemHolder.removeChildAt(0);
     }
 
+    leftIndex = 0;
+
     var numItems:Int = Math.ceil(_height / _listItemHeight);
     numItems = Std.int(Math.min(numItems, _items.length));
     numItems = Std.int(Math.max(numItems, 1));
-    for (i in 0...numItems)
+
+    numItems = Std.int ( Math.min ( _items.length, numItems + getCacheSize ( ) ) );
+
+    var i = 0;
+    activeCounter = 0;
+    var ioc = 0; // index of cache
+    var size = items.length;
+    var itemOfListIndex = -1;
+
+    while ( i < activeCounter + getCacheSize ( ) )
     {
-      var item : ListItem = new ListItem (_itemHolder, 0, i * _listItemHeight);
-      item.setSize(width, _listItemHeight);
+      var posX : Float, posY : Float;
+      var pre = _listItems[i-1];
+      
+      if ( orientation == Slider.VERTICAL ) {
+        posX = 0;
+        if ( 0 == i )
+          posY = 0
+        else
+          posY = pre.y + pre.height;
+
+        // posY = i * _listItemHeight;
+      } else {
+        if ( 0 == i )
+          posX = 0;
+        else
+          posX = pre.x + pre.width;
+        posY = 0;
+      }
+
+      if ( activeCounter == 0 ) {
+        if ( posY >  height && isVertical ( ) ||
+             posX > width && isHorizontal ( ) ) {
+          activeCounter = i;
+        }
+      }
+
+      var item : ViewItem = Type.createInstance ( _listItemClass, [ _itemHolder, posX, posY ]);
+
+      // item.setSize(width, _listItemHeight);
       item.defaultColor = _defaultColor;
 
       item.selectedColor = _selectedColor;
       item.rolloverColor = _rolloverColor;
       item.addEventListener(MouseEvent.CLICK, onSelect);
+
+      itemOfListIndex = _listItems.length;
+
+      // if ( activeCounter > 0 ) {
+      //   var cacheSize = Math.mini ( size - activeCounter, getCacheSize ( ) );
+      //   var left = i < activeCounter + cacheSize / 2;
+      //   if ( left ) {
+      //     if ( isVertical ( ) ) {
+      //       item.x = _listItems[0].x - item.width
+      //     } else if ( isHorizontal ( ) ) {
+      //       item.y = _listItems[0].y - item.height;
+      //     }
+      //     itemOfListIndex = 0;
+      //   }
+      // }
       
-      _listItems.push(item);
+      _listItems.insert ( itemOfListIndex, item );
+      i += 1;
     }
+  }
+
+  function getCacheSize ( ) : Int
+  {
+    var itemSize : Int = _items.length;
+    return Std.int ( Math.max ( 0, Math.min ( ( itemSize - activeCounter ), 10 ) ) );
   }
 
   function fillItems():Void
   {
     var offset:Int = Std.int(_scrollbar.value);
-    var numItems:Int = Math.ceil(_height / _listItemHeight);
-    numItems = Std.int(Math.min(numItems, _items.length));
-    
+    // var numItems:Int = Math.ceil(_height / _listItemHeight);
+    // numItems = Std.int(Math.min(numItems, _items.length));
+    // numItems = Std.int ( Math.min ( _items.length, numItems + getCacheSize ( ) ) );
+    var numItems = _listItems.length;
+
     // TODO: Fix this
     if (_autoHeight)
     {
       _height = Std.int(Math.min(numItemsToShow * _listItemHeight, numItems * _listItemHeight));
     }
+
     // TODO: Fix this
     for (i in 0...numItems)
     {
-      var item : ListItem = _listItems[i];
+
+      var item : ViewItem = _listItems[i];
+      if ( null == item )
+        return;
+
       if (offset + i < _items.length)
       {
         item.data = _items[offset + i];
@@ -248,6 +571,9 @@ class List extends Component
    */
   public override function draw():Void
   {
+    var rect = new nme.geom.Rectangle ( x, y, _width, _height );
+    scrollRect = rect;
+
     super.draw();
     
     _selectedIndex = Std.int(Math.min(_selectedIndex, _items.length - 1));
@@ -258,17 +584,27 @@ class List extends Component
     _panel.draw();
     
     // scrollbar
-    _scrollbar.x = _width - 10;
+    var viewLength;
+    if ( _orientation == Slider.VERTICAL ) {
+      _scrollbar.x = _width - 10;
+      viewLength = _height;
+      _scrollbar.height = viewLength;
+    } else {
+      _scrollbar.y = _height - 10;
+      viewLength = _width;
+      _scrollbar.width = viewLength;
+    }
+    
     var contentHeight:Float = _items.length * _listItemHeight;
-    _scrollbar.setThumbPercent(_height / contentHeight); 
+    _scrollbar.setThumbPercent(viewLength / contentHeight); 
     #if flash
-    var pageSize:Float = Math.floor(_height / _listItemHeight);
+    var pageSize:Float = Math.floor(viewLength / _listItemHeight);
     #else
-    var pageSize:Float = Math.ceil(_height / _listItemHeight);
+    var pageSize:Float = Math.ceil(viewLength / _listItemHeight);
     #end
     _scrollbar.maximum = Math.max(0, _items.length - pageSize);
     _scrollbar.pageSize = Std.int(pageSize);
-    _scrollbar.height = _height;
+    
     _scrollbar.draw();
     scrollToSelection();
     
@@ -287,7 +623,7 @@ class List extends Component
   {
     _items.push(item);
     invalidate();
-    makeListItems();
+    makeViewItems();
     fillItems();
   }
   
@@ -303,7 +639,7 @@ class List extends Component
     //_items.splice(index, 0, item);
     _items.insert(index, item);
     invalidate();
-    makeListItems();
+    makeViewItems();
     fillItems();
   }
   
@@ -334,7 +670,7 @@ class List extends Component
     if (index < 0 || index >= _items.length) return;
     _items.splice(index, 1);
     invalidate();
-    makeListItems();
+    makeViewItems();
     fillItems();
   }
   
@@ -345,7 +681,7 @@ class List extends Component
   {
     _items = [];
     invalidate();
-    makeListItems();
+    makeViewItems();
     fillItems();
   }
   
@@ -363,17 +699,21 @@ class List extends Component
   function onSelect(event:Event):Void
   {
     // TODO: Fix this
-    //if(!Std.is(event.target, ListItem)) return;
+    //if(!Std.is(event.target, ViewItem)) return;
     
     var offset:Int = Std.int(_scrollbar.value);
+    var target : Dynamic = event.target;
+    var item : Dynamic;
     
     for (i in 0..._itemHolder.numChildren)
     {
-      if (_itemHolder.getChildAt(i) == event.target) _selectedIndex = i + offset;
-      //cast(_itemHolder.getChildAt(i), ListItem).selected = false;
-      cast(_listItems[i], ListItem).selected = false;
+      item = _itemHolder.getChildAt(i);
+      // Bug _itemHolder.getChildAt(i) == event.target 编译错误。
+      if ( item == target ) _selectedIndex = i + offset;
+      //cast(_itemHolder.getChildAt(i), ViewItem).selected = false;
+      cast(_listItems[i], ViewItem).selected = false;
     }
-    //cast(event.target, ListItem).selected = true;
+    //cast(event.target, ViewItem).selected = true;
     //selectedIndex = _selectedIndex;
 	
 	if (_selectedIndex >= _items.length)
@@ -383,7 +723,7 @@ class List extends Component
 	
 	if (_selectedIndex - offset >= 0)
 	{
-		cast(_listItems[_selectedIndex - offset], ListItem).selected =  true;
+		cast(_listItems[_selectedIndex - offset], ViewItem).selected =  true;
 	}
 	
     dispatchEvent(new Event(Event.SELECT));
@@ -408,7 +748,7 @@ class List extends Component
 
   function onResize(event:Event):Void
   {
-    makeListItems();
+    makeViewItems();
     fillItems();
   }
   ///////////////////////////////////
@@ -528,15 +868,15 @@ class List extends Component
   /**
    * Sets the height of each list item.
    */
-  public function setListItemHeight(value:Float):Float
+  public function setViewItemHeight(value:Float):Float
   {
     _listItemHeight = value;
-    makeListItems();
+    makeViewItems();
     invalidate();
     return value;
   }
   
-  public function getListItemHeight():Float
+  public function getViewItemHeight():Float
   {
     return _listItemHeight;
   }
@@ -557,17 +897,17 @@ class List extends Component
   }
 
   /**
-   * Sets / gets the class used to render list items. Must extend ListItem.
+   * Sets / gets the class used to render list items. Must extend ViewItem.
    */
-  public function setListItemClass(value:Class<ListItem>):Class<ListItem>
+  public function setViewItemClass(value:Class<ViewItem>):Class<ViewItem>
   {
     _listItemClass = value;
-    makeListItems();
+    makeViewItems();
     invalidate();
     return value;
   }
   
-  public function getListItemClass():Class<ListItem>
+  public function getViewItemClass():Class<ViewItem>
   {
     return _listItemClass;
   }
@@ -653,5 +993,25 @@ class List extends Component
     return super.setHeight(h);
   }
 
+  public function getOrientation ( ) : String
+  {
+    return _orientation;
+  }
+
+  public function setOrientation ( value : String ) : String
+  {
+    _orientation = value;
+    return value;
+  }
+
+  public function hideScrollBar ( )
+  {
+    _scrollbar.forceVisible = false;
+  }
+
+  public function showScrollBar ( )
+  {
+    _scrollbar.forceVisible = true;
+  }
 }
 

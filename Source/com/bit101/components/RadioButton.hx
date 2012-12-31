@@ -169,21 +169,21 @@ class RadioButton extends Component
 		super.draw();
 		_back.graphics.clear();
 		_back.graphics.beginFill(Style.BACKGROUND);
-		_back.graphics.drawCircle(5, 5, 5);
+		_back.graphics.drawCircle(5 * scale, 5 * scale, 5 * scale);
 		_back.graphics.endFill();
 		
 		_button.graphics.clear();
 		_button.graphics.beginFill(Style.LABEL_TEXT);
-		_button.graphics.drawCircle(5, 5, 3);
+		_button.graphics.drawCircle(5 * scale, 5 * scale, 3 * scale);
 		
-		_label.x = 12;
-		_label.y = (10 - _label.height) / 2;
+		_label.x = 12 * scale;
+		_label.y = (10 * scale - _label.height * scale) / 2 * scale;
 		_label.autoSize = true;
 		
 		_label.text = _labelText;
 		_label.draw();
-		_width = _label.width + 12;
-		_height = 10;
+		_width = _label.width * scale + 12 * scale;
+		_height = 10 * scale;
 		
 		#if !flash
 		_clickableArea.graphics.clear();

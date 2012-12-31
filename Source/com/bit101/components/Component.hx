@@ -75,11 +75,13 @@ class Component implements IEventDispatcher
 	public var visible(getVisible, setVisible):Bool;
 	public var graphics(getGraphics, null):Graphics;
 	public var parent(default, null):Dynamic;
-  public var component (getComponent, null) : Sprite;
+    public var component (getComponent, null) : Sprite;
 	public var alpha(getAlpha, setAlpha):Float;
 	
 	public var tag(getTag, setTag):Int;
 	public var enabled(getEnabled, setEnabled):Bool;
+    public var scrollRect ( getScrollRect, setScrollRect ) : nme.geom.Rectangle;
+    public var scale : Float;
 	
 	// Composition instead of inheritence because of haxe getter/setter handicap
 	var _comp:Sprite;
@@ -106,6 +108,7 @@ class Component implements IEventDispatcher
 		_enabled = true;
 		move(xpos, ypos);
 		this.parent = parent;
+		scale = 1;
 		if(parent != null)
 		{
 			parent.addChild(_comp);
@@ -538,4 +541,15 @@ class Component implements IEventDispatcher
   {
     return _comp;
   }
+
+    public function getScrollRect ( ) : nme.geom.Rectangle
+    {
+        return _comp.scrollRect;
+    }
+
+    public function setScrollRect ( value : nme.geom.Rectangle ) : nme.geom.Rectangle
+    {
+        _comp.scrollRect = value;
+        return value;
+    }
 }
