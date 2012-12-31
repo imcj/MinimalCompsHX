@@ -166,6 +166,69 @@ class List extends Component
     return length;
   }
 
+  public function scrollToLeft ( )
+  {
+    _scrollTo ( "L" );
+  }
+
+  public function scrollToRight ( )
+  {
+    _scrollTo ( "R" );
+  }
+
+  var _scrollToListItem : ViewItem;
+  var _scrollMoveToTarget : Float = 0;
+  var _scrollModel : Bool = false;
+  var _duration : Float = 1000;
+  var _peerMillisecondDistance : Float;
+  var _distance : Float = 0;
+
+  function _scrollTo ( direction: String )
+  {
+    var next : ViewItem = null;
+    var item : ViewItem;
+    var size : Int = _listItems.length;
+    var first : ViewItem = _listItems[0];
+
+
+    for ( i in 0 ... size ) {
+      item = _listItems[i];
+
+      if ( direction == "L" ) {
+        if ( i < size ) {
+          next = _listItems[i+1];
+        }
+        if ( item.x < 0 ) {
+          if ( next != null ) {
+            if ( next.x < 0 ) {
+              continue;
+            } else {
+              _scrollToListItem = item;
+            }
+          }
+        }
+      }
+
+      if ( direction == "R" ) {
+        if ( ( item.x + item.width ) > width ) {
+          _scrollToListItem = item;
+          break;
+        }
+      }
+    }
+
+    if ( null == _scrollToListItem ) {
+      return;
+    }
+
+    _distance = if ( _scrollToListItem.x < 0 ) Math.abs ( _scrollToListItem.x ) else width - _scrollToListItem.width;
+    var frame_rate : Int = 24;
+    
+    _peerMillisecondDistance = ( _distance / _duration ) * ( 1000 / frame_rate );
+    _scrollModel = true;
+    addEventListener ( Event.ENTER_FRAME, handlerEnterFrame );
+  }
+
   function handlerEnterFrame ( event )
   {
     var start : Float = Date.now ( ).getTime ( );
@@ -177,22 +240,58 @@ class List extends Component
     var first = _listItems[0];
     var last  = _listItems[_listItems.length-1];
 
-    diff = isHorizontal ( ) ? mouseX - lastMouseX : mouseY - lastMouseY;
+    diff = 0;
+    if ( ! _scrollModel )
+      diff = isHorizontal ( ) ? mouseX - lastMouseX : mouseY - lastMouseY;
     // > 0 Right
-
-    if ( mouseX <= x || mouseX >= width || mouseY <= y || mouseY >= height )
+    if ( ( mouseX <= x || mouseX >= width || mouseY <= y || mouseY >= height ) && false == _scrollModel ) {
       handlerMouseUp ( null );
+    }
 
     var leftCacheNumbers = 0;
     var rightCacheNumbers = 0;
 
-    if ( getListItemPosition ( first ) + diff > 0 && leftIndex == 0 ) {
+    if ( getListItemPosition ( first ) + diff > 0 && leftIndex == 0 && ! _scrollModel ) {
       diff = Math.abs ( first.x );
     }
 
     if ( getListItemPosition ( last ) + getListItemLength ( last ) + diff < getListItemLength ( this ) ) {
       diff = 0;
     }
+
+    if ( _scrollModel ) {
+      var over : Bool = false;
+      // trace ( diff );
+      if ( _scrollToListItem.x <= 0 ) {
+        diff = _peerMillisecondDistance;
+        if ( _scrollToListItem.x >= 0 ) {
+          over = true;
+        }
+      }
+
+      var outsideOfBoundary = _scrollToListItem.x + _scrollToListItem.width >= width - _peerMillisecondDistance;
+      if ( outsideOfBoundary ) {
+        diff = -_peerMillisecondDistance;
+        if ( _scrollToListItem.x <= width - _scrollToListItem.width ) {
+          over = true;
+        }
+      }
+
+      _distance -= _peerMillisecondDistance;
+      // trace ( _distance );
+
+      if ( over ) {
+        removeEventListener ( Event.ENTER_FRAME, handlerEnterFrame );
+        _scrollModel = false;
+        _peerMillisecondDistance = 0;
+
+      }
+    }
+    // if ( diff < first.x ) {
+    //   diff = first.x;
+    // } else if ( diff > last.x + last.width ) {
+    //   diff = last.x + last.width;
+    // }
 
     for ( i in 0 ... _listItems.length ) {
       var item = _listItems[i];
@@ -246,7 +345,6 @@ class List extends Component
     lastMouseY = mouseY;
 
     var end : Float = Date.now ( ).getTime ( );
-    trace ( Std.string ( end ) + " " + Std.string ( start ) );
   }
 
   function handlerMouseUp ( event )
