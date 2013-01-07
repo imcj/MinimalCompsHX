@@ -369,10 +369,12 @@ class List extends Component
   override function addChildren():Void
   {
     super.addChildren();
-    _panel = new Panel(this, 0, 0);
-    _panel.color = _defaultColor;
+    // _panel = new Panel(this, 0, 0);
+    // _panel.color = _defaultColor;
+    // _panel.backgroundAlpha = 0;
     _itemHolder = new Sprite();
-    _panel.content.addChild(_itemHolder);
+    addChild ( _itemHolder );
+    // _panel.content.addChild(_itemHolder);
     if ( _orientation == Slider.VERTICAL ) {
       _scrollbar = new VScrollBar(this, 0, 0, onScroll);
     } else {
@@ -579,9 +581,9 @@ class List extends Component
     _selectedIndex = Std.int(Math.min(_selectedIndex, _items.length - 1));
 
     // panel
-    _panel.setSize(_width, _height);
-    _panel.color = _defaultColor;
-    _panel.draw();
+    // _panel.setSize(_width, _height);
+    // _panel.color = _defaultColor;
+    // _panel.draw();
     
     // scrollbar
     var viewLength;
