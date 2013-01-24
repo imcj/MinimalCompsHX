@@ -443,7 +443,9 @@ class List extends Component
         }
       }
 
-      var item : ViewItem = Type.createInstance ( _listItemClass, [ _itemHolder, posX, posY ]);
+      var item : ViewItem = Type.createInstance ( 
+        _listItemClass,
+        [ _itemHolder, posX, posY, null, this ] );
 
       // item.setSize(width, _listItemHeight);
       item.defaultColor = _defaultColor;

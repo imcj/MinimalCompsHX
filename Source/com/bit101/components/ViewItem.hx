@@ -9,6 +9,7 @@ class ViewItem extends Component
   public var defaultColor(getDefaultColor, setDefaultColor):Int;
   public var selectedColor(getSelectedColor, setSelectedColor):Int;
   public var rolloverColor(getRolloverColor, setRolloverColor):Int;
+  public var list ( getList, null ) : List;
 
   var _data:Dynamic;
   var _defaultColor:Int;
@@ -16,8 +17,10 @@ class ViewItem extends Component
   var _rolloverColor:Int;
   var _selected:Bool;
   var _mouseOver:Bool;
+  var _list : List;
 
-  public function new (?parent : Dynamic = null, ?xpos : Float = 0, ?ypos : Float = 0, ?data : Dynamic = null)
+  public function new (?parent : Dynamic = null, ?xpos : Float = 0,
+                       ?ypos : Float = 0, ?data : Dynamic = null, list : List )
   {
     _defaultColor = 0xffffff;
     _selectedColor = 0xdddddd;
@@ -25,6 +28,7 @@ class ViewItem extends Component
     _mouseOver = false;
 
     _data = data;
+    _list = list;
     super (parent, xpos, ypos);
   }
 
@@ -180,5 +184,10 @@ class ViewItem extends Component
   public function getRolloverColor():Int
   {
     return _rolloverColor;
+  }
+
+  public function getList ( ) : List
+  {
+    return _list;
   }
 }
