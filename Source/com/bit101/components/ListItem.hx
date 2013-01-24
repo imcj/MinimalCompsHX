@@ -41,9 +41,11 @@ class ListItem extends ViewItem
 	 * @param ypos The y position to place this component.
 	 * @param data The string to display as a label or object with a label property.
 	 */
-	public function new(?parent:Dynamic = null, ?xpos:Float = 0, ?ypos:Float = 0, ?data:Dynamic = null)
+	public function new ( ?parent : Dynamic = null, ?xpos:Float = 0,
+					      ?ypos   : Float = 0, ?data:Dynamic = null,
+					      ?list   : List = null )
 	{
-		super(parent, xpos, ypos, data);
+		super ( parent, xpos, ypos, data, list );
 	}
 	
 	
